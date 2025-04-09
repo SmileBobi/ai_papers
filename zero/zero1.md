@@ -18,7 +18,8 @@
 
 ![figure1](images/zero1_figure1.jpg)
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**k=12，有三份来源：optimizer state、一阶距二阶距、main parameter它们都是fp32存储的所以是4，2是指bf16精度存储的** <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**注：k=12，有三份来源：optimizer state、一阶距二阶距、main parameter它们都是fp32存储的所以是4，2是指bf16精度存储的** <br>
+
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**优化剩余状态内存**在ZeRO-DP提升了模型状态的内存效率之后，由激活值、临时缓冲区和无法使用的内存碎片所消耗的剩余内存可能成为次要的内存瓶颈。为了优化这三个因素所消耗的剩余内存，我们开发了ZeRO-R。<br>
 1. 对于激活值（在前向传播中存储以进行反向传播），我们注意到检查点技术（checkpointing）有所帮助，但对于大型模型仍然不足。因此，ZeRO-R通过激活值分区(partitioning)来优化激活值内存，通过识别并消除现有模型并行（MP）方法中的激活值复制。当适当时，它还将激活值转移到CPU上进行处理。
 2. ZeRO-R为临时缓冲区定义了适当的大小，以在内存和计算效率之间取得平衡。
