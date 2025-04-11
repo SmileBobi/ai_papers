@@ -124,6 +124,10 @@
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;流水线中阶段的1F1B调度策略和跨复制阶段的轮询(round-robin)负载均衡调度策略都是静态策略。因此，它们可以由每台机器独立执行，无需昂贵的分布式协调。<br>
 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**图8详细讲解：**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;纵向machine1、2、3、4分别对应stage1、2、3、4，
+横向step每个时间步，machine1第一个时间步塞入1号mincro-batch，第二个时间步塞入2号mincro-batch，第三个时间步塞入3号mincro-batch，第四个时间步塞入4号mincro-batch，每个时间步所用到的weight可能不一样，当machine4做完1号mincro-batch的前向后，采用1f1b的思想（一个前向一个反向，反向做完就可以释放一部分的activition，是显存节约的一种方式），machine4第二个时间步可以做1号mincro-batch的反向也可以做2号mincro-batch的前向，它是交叉的来进行的，有反向就优先做反向，没有就做前向（这边实现了zero bubble的方式），后面就没有pipeline-flush，因为采用了异步更新的方式，这些mincro-batch谁管谁的weight，比如4号batch走到machine3，此时发现1号batch已经做完反向了，此时立刻更新4号它的weight，那么4号就在更新后的weight上继续往下走，在machine3的3号batch用的weight是之前的weight，此时3号和4号用到的weight是两份不同的weight，这时候就会出现weight的冗余（只是时间不一样，在本论文中要同时保存，这就是一个致命的缺点），虽然后期没有bubble但是会多保留weight，**本文工程上不会使用**。<br>
+
 ## 3.4 有效学习
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;在一个简单的流水线系统中，每个小批量的前向传播使用一组参数版本，而后向传播使用**另一组**参数版本。图8使用没有数据并行的分区示例说明了这一点。如果我们观察第1阶段（机器1），则**在应用了来自小批量1的更新之后执行小批量5的前向传播**，而在应用了小批量2、3和4的更新之后执行小批量5的后向传播。结果是，在第1阶段(stage)执行小批量5的后向传播时，梯度是使用不同的权重(weight)集合计算的，这与相应的前向传播中使用的权重版本不一致；这种权重版本的差异可能会阻止模型收敛。<br>
 
