@@ -13,13 +13,13 @@
 
 **① 核心思想**：
 整个前向做完再去做反向，这样就会形成很大的**Bubble**，
-所有的反向做完才做参数的更新，即Update，专业名词**Pipeline-flush**（等所有的micro-batch跑完之后，梯度都累加好之后，再去做统一的梯度更新）。
+所有的反向做完才做参数的更新，即Update，专业名词**Pipeline-flush**（等所有的micro-batch跑完之后，梯度都累加好之后，再去做统一的梯度更新）。`<br>`
 **② 特点**：
-当micro-batch个数越多，Bubble所占的比例越低，计算效率越高。
+当micro-batch个数越多，Bubble所占的比例越低，计算效率越高。`<br>`
 **③ 经验**：
-micro-batch总的个数至少是stage的四倍以上。
+micro-batch总的个数至少是stage的四倍以上。`<br>`
 **④ 图(c)讲解**：
-纵轴是设备device，横轴是时间步step，每个device对应着模型的一个阶段stage。
+纵轴是设备device，横轴是时间步step，每个device对应着模型的一个阶段stage。`<br>`
 
 # 2、 PipeDream
 
