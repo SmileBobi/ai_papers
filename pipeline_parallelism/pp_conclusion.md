@@ -54,11 +54,11 @@
    
  ![figure8](images/PipeDream-Flush.jpg)
  
- - **①、工程上一定会使用带Pipeline flush的**，没有完全实现异步更新（每个micro-batch自己管自己的更新），异步更新在工程上是不太合理的，
- - **②、图（b）中是等4个micro-batch全部做完反向后，统一做更新**，前反向相互交叉进行，最后在同一个weight上面做梯度累加，所有的micro-batch累加完之后，在总的global batch上面去做Pipeline flush参数更新（**这个方式已经在工程上落地了**，在这个落地的情况下，**Megatron-LM在这个基础上又进行了扩展'Interleave-1f1b'**）
+ - **工程上一定会使用带Pipeline flush的**，没有完全实现异步更新（每个micro-batch自己管自己的更新），异步更新在工程上是不太合理的，
+ - **图（b）中是等4个micro-batch全部做完反向后，统一做更新**，前反向相互交叉进行，最后在同一个weight上面做梯度累加，所有的micro-batch累加完之后，在总的global batch上面去做Pipeline flush参数更新（**这个方式已经在工程上落地了**，在这个落地的情况下，**Megatron-LM在这个基础上又进行了扩展'Interleave-1f1b'**）
  
  
- # 4、Interleave-1f1b（Megatron-LM）
+ # 4、Interleave-1f1b
  
  - [论文地址-EN](https://arxiv.org/pdf/2104.04473)
  - [论文地址-CN](https://yiyibooks.cn/arxiv/2104.04473v5/index.html)
