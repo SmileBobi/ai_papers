@@ -65,8 +65,8 @@
  
      ![figure8](images/Interleave-1f1b-figure.png)
  
- - ①、上半部分的图就是**PipeDream-1f1b中的图（b）**,下半部分就是**Megatron-LM在此基础上改进的Interleave-1f1b，这个方式也在工程上落地了**
- - **②、核心思想：**<br>
+ - 上半部分的图就是**PipeDream-1f1b中的图（b）**,下半部分就是**Megatron-LM在此基础上改进的Interleave-1f1b，这个方式也在工程上落地了**
+ - **核心思想：**<br>
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（1）拆stage的时候用了更细粒度的stage，**一张卡上可以包含两个不同的stage**。<br>
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（2）**假设现在有4个Gpu、模型有16层：**<br>
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;上面图的切分，每个Device放了4层：<br>
