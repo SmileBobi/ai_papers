@@ -28,8 +28,8 @@
  
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**①** 与传统的单向流水线不同，流水线式的DNN训练涉及到双向流水线。一个小批量数据的前向传递从**输入层开始**，反向传递在**输入层结束**。因此，在流水线中的每个活跃小批量数据可能位于不同的层，无论是在前向传递还是反向传递中。因此，系统中的每台机器必须在以下两个选项之间进行选择：
  
- 1. 执行一个小批量数据的前向传递，从而将该小批量数据推送到下游机器；<br>
- 2. 为**另一个**小批量数据执行反向传递，从而确保学习中的前进。<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. 执行一个小批量数据的前向传递，从而将该小批量数据推送到下游机器；<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. 为**另一个**小批量数据执行反向传递，从而确保学习中的前进。<br>
  
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;始终优先考虑前向工作的简单调度机制会阻碍整体的前向进展，因为只有在完成反向传播后才能应用权重更新。同样地，始终优先考虑后向工作可能会导致周期性地存在空闲机器没有可用工作。我们提出了一种避免这些问题的调度机制。<br>
  
@@ -70,11 +70,11 @@
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（1）拆stage的时候用了更细粒度的stage，**一张卡上可以包含两个不同的stage**。
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（2）**假设现在有4个Gpu、模型有16层：**
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;上面图的切分，每个Device放了4层：
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（0-3层属于stage0，对应Gpu0，放到Device1上）、
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（4-7层属于stage1，对应Gpu1，放到Device2上）、
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（8-11层属于stage2，对应Gpu2，放到Device3上）、
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（12-15层属于stage3，对应Gpu3，放到Device4上）。`<br>`
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;下面图Interleave的会有一个变化：每个Device放了4层，但是是**间隔的放**，比如：Device1放了0、1、8、9层，中间有明显的间隔，这个间隔就是用不同颜色来表示的，深蓝色的1号micro-batch进入了Device1里，运行第0和1层，运行后立即把output交给Device2，一直交到Device4结束后，此时总共运行了八层，现在该运行第九层了即第8层，第8层在Device1上（浅蓝色的1号micro-batch），采用Interleave的方式，每张卡上是交错的方式，这样做的好处是：上面图Device1是要运行四层才能把output交给Device2的，但是下面图只需要运行两层就能交给下一个Device，那么图中左边灰色的小方格即Bubble就会减半。`<br>`
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（0-3层属于stage0，对应Gpu0，放到Device1上）、<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（4-7层属于stage1，对应Gpu1，放到Device2上）、<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（8-11层属于stage2，对应Gpu2，放到Device3上）、<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（12-15层属于stage3，对应Gpu3，放到Device4上）。<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;下面图Interleave的会有一个变化：每个Device放了4层，但是是**间隔的放**，比如：Device1放了0、1、8、9层，中间有明显的间隔，这个间隔就是用不同颜色来表示的，深蓝色的1号micro-batch进入了Device1里，运行第0和1层，运行后立即把output交给Device2，一直交到Device4结束后，此时总共运行了八层，现在该运行第九层了即第8层，第8层在Device1上（浅蓝色的1号micro-batch），采用Interleave的方式，每张卡上是交错的方式，这样做的好处是：上面图Device1是要运行四层才能把output交给Device2的，但是下面图只需要运行两层就能交给下一个Device，那么图中左边灰色的小方格即Bubble就会减半。<br>
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（3）节约Bubble时间，但通讯的次数变多
 
 # 5、zero-Bubble
