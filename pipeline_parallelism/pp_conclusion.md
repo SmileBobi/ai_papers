@@ -11,14 +11,14 @@
  
  图 (a) 一个示例的神经网络，具有连续的层，被分割到四个加速器上。 $F_{k}$ 是第k个单元的组合前向计算函数。 $B_{k}$ 是反向传播函数，它依赖于来自上一层的 $B_{k+1}$ 和 $F_{k}$ 。(b) 朴素的模型并行策略由于网络的顺序依赖关系导致严重的低利用率。(c) 流水线并行将输入的mini-batch分割成较小的micro-match，使得不同的加速器可以同时处理不同的micro-batch。梯度在最后同步应用。
  
- **① 核心思想**：
+ - **核心思想**：
  整个前向做完再去做反向，这样就会形成很大的**Bubble**，
  所有的反向做完才做参数的更新，即Update，专业名词**Pipeline-flush**（等所有的micro-batch跑完之后，梯度都累加好之后，再去做统一的梯度更新）。<br>
- **② 特点**：
+ - **特点**：
  当micro-batch个数越多，Bubble所占的比例越低，计算效率越高。<br>
- **③ 经验**：
+  - **经验**：
  micro-batch总的个数至少是stage的四倍以上。<br>
- **④ 图(c)讲解**：
+ -  **图(c)讲解**：
  纵轴是设备device，横轴是时间步step，每个device对应着模型的一个阶段stage。<br>
  
  # 2、 PipeDream
@@ -69,11 +69,11 @@
  - **②、核心思想：**<br>
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（1）拆stage的时候用了更细粒度的stage，**一张卡上可以包含两个不同的stage**。<br>
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（2）**假设现在有4个Gpu、模型有16层：**<br>
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;上面图的切分，每个Device放了4层：<br>
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（0-3层属于stage0，对应Gpu0，放到Device1上）、<br>
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（4-7层属于stage1，对应Gpu1，放到Device2上）、<br>
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（8-11层属于stage2，对应Gpu2，放到Device3上）、<br>
- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（12-15层属于stage3，对应Gpu3，放到Device4上）。<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;上面图的切分，每个Device放了4层：<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（0-3层属于stage0，对应Gpu0，放到Device1上）、<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（4-7层属于stage1，对应Gpu1，放到Device2上）、<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（8-11层属于stage2，对应Gpu2，放到Device3上）、<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（12-15层属于stage3，对应Gpu3，放到Device4上）。<br>
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;下面图Interleave的会有一个变化：每个Device放了4层，但是是**间隔的放**，比如：Device1放了0、1、8、9层，中间有明显的间隔，这个间隔就是用不同颜色来表示的，深蓝色的1号micro-batch进入了Device1里，运行第0和1层，运行后立即把output交给Device2，一直交到Device4结束后，此时总共运行了八层，现在该运行第九层了即第8层，第8层在Device1上（浅蓝色的1号micro-batch），采用Interleave的方式，每张卡上是交错的方式，这样做的好处是：上面图Device1是要运行四层才能把output交给Device2的，但是下面图只需要运行两层就能交给下一个Device，那么图中左边灰色的小方格即Bubble就会减半。<br>
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;（3）节约Bubble时间，但通讯的次数变多
 
