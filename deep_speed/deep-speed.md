@@ -44,12 +44,29 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;此外，流水线并行在每个训练批次的开始和结束时会产生填充和清空流水线的开销。使用梯度累积步骤(and thus batch size)为流水线阶段数量的4倍或8倍，分别可以实现81%和90%的从一个流水线阶段的扩展效率。<br>
 
 ## 1.3 通过3D并行实现内存和计算效率
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;数据并行、模型并行和流水线并行各自在提高内存和计算效率方面扮演着特定的角色。图1说明了我们的3D策略。<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;数据并行、模型并行和流水线并行各自在提高内存和计算效率方面扮演着特定的角色。图1说明了我们的3D策略，图中用了`32张卡32层的Layer`做的3D并行方案。<br>
+
+- *下图讲解*：比如一个`input[16,128]`, DP是`两个Rank`，那么其`group size = 2`，就把`input`按照batch size拆成`两部分[8,128]`, 分别放入两个DP里， **混合并行的时候，一个完整的DP是需要一个完整的模型**（图中模型是32层），图下方说明了有 32 个 workers，此时每个 DP 分别有16个 worker（即Gpu），这16个Gpu是有一套完整的 weight。用Rank 0来解释，**Stage 0有4个Gpu(一种颜色代表一个worker)、8层 Layers，纵轴按照PP来拆分，横轴按照TP来拆分（每一层的weight分到四个不同的Gpu上）**
+  <br>
+- **TP之间是怎么做通信的呢？**
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1、`Rank 0 里的 Stage 0 内部中`：纵轴第一层（四个不同颜色的小方块）做 All Reduce。
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2、`跨DP的通信（不同DP的All Reduce）`：就是（*不同Rank、相同Stage、相同层、颜色相同的小方块*）分别对应做All Reduce（Rank 0 里的 Stage 0 中的第一层的第一个紫色小方块与Rank 1 里的 Stage 0 中的第一层的第一个紫色小方块做All Reduce，绿色的与绿色的做All Reduce，以此类推橙色、蓝色也是这通信，一共做8层的通信）。
+- **不同的PP之间做 send 和 recive**，卡和卡是相对应的，做完TP之后，每一部分和每一部分相对应的做传输（Rank 0 中 Stage 0 的0-7层 和 Stage 1 的8-15层的紫色小方块是相对应的做传输，即紫色双向箭头）。<br>
+- **计算出来的Optimizer是如何分配的？** 
+- **还用了Zero策略，Zero策略在Optimizer是如何分配的？**
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;就是拆一个小方块，每个Dp里的对应的小方块的Optimizer State是一样的，在此基础上小方块还可以应用Zero策略：就是（*不同Rank、相同Stage、相同层、颜色相同的小方块*）分别对应做Zero（Rank 0 里的 Stage 0 中的第一层的第一个紫色小方块与Rank 1 里的 Stage 0 中的第一层的第一个紫色小方块做Zero，*怎么做Zero呢（它们之间weight是一样的，是保存Optimizer里的Optimizer State，只要保存这个一半的weight就行）*，`Zero是在不同DP之间做的`，图中TP做个4份，所以有4个Zero
 
 ![figure1](images/deepspeed-figure1.jpg)
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**内存效率**：将模型的层划分为流水线阶段，然后通过模型并行将每个阶段的层进一步划分。这种二维组合同时减少了模型、优化器和激活值消耗的内存。然而，我们不能无限地划分模型，否则会产生通信开销，从而限制了计算效率。<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**计算效率**：为了使工作节点数量在模型并行和流水线并行之外**继续扩展**，同时又不损失计算效率，我们使用基于ZeRO的数据并行（ZeRO-DP）。ZeRO-DP不仅通过**优化器状态分割**进一步提高内存效率，还通过利用(exploiting)**拓扑感知映射**(topology aware mapping)，使得在最小的通信开销下可以扩展到任意数量的GPU。<br>
+
+- `按照图1的方案` Gpu 的分配如下： 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`Pipeline Paralle`：就是 Gpu4、12、20、28 这个维度
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`Zero Data Parallel`：其属于`Data Parallel`，**Zero只能在`Data Parallel`情况下做切分**。
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;上面16张卡组成一个DP, 下面16张卡组成另一个DP，Gpu0、8、16、24代表4个不同的Stage，每个Stage有8层，总共32层。
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`Model Paralle`：在deepspeed中其实就是TP，绿色的四个小方块分别代表Gpu0、1、2、3，一定是连续的，要保证TP在同一个节点之内。
+- 
 
 ![figure2](images/deepspeed-figure2.jpg)
 
