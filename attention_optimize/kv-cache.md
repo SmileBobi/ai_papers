@@ -11,7 +11,7 @@
 
 ![figure1](https://miro.medium.com/v2/resize:fit:1100/format:webp/0*sexO6adGhaKr7aH0.gif)
 
-*(figrue 1: 在Encoder的自回归生成中，给定一个输入，模型会预测下一个token，然后在下一步中使用组合的输入进行下一个预测。)* <br>
+*(figrue 1: 在Dncoder的自回归生成中，给定一个输入，模型会预测下一个token，然后在下一步中使用组合的输入进行下一个预测。)* <br>
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;这种自回归行为会重复(repeats)一些操作，我们可以通过放大(zoom in) Encoder 中计算的带掩码的缩放点积注意力(masked scaled dot-product attention)来更好地理解这一点。<br>
 
